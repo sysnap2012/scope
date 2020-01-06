@@ -5,6 +5,7 @@ import (
 
 	"context"
 	"github.com/gorilla/mux"
+	opentracing "github.com/opentracing/opentracing-go"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/weaveworks/scope/common/xfer"
@@ -50,6 +51,8 @@ func checkPipe(pr PipeRouter) CtxHandlerFunc {
 func handlePipeWs(pr PipeRouter, end End) CtxHandlerFunc {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		id := mux.Vars(r)["pipeID"]
+		span, ctx := opentracing.StartSpanFromContext(ctx, "PipeWS", opentracing.Tag{"pipeID", id})
+		defer span.Finish()
 		pipe, endIO, err := pr.Get(ctx, id, end)
 		if err != nil {
 			// this usually means the pipe has been closed
