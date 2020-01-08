@@ -51,8 +51,6 @@ func checkPipe(pr PipeRouter) CtxHandlerFunc {
 func handlePipeWs(pr PipeRouter, end End) CtxHandlerFunc {
 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		id := mux.Vars(r)["pipeID"]
-		span, ctx := opentracing.StartSpanFromContext(ctx, "PipeWS", opentracing.Tag{"pipeID", id})
-		defer span.Finish()
 		pipe, endIO, err := pr.Get(ctx, id, end)
 		if err != nil {
 			// this usually means the pipe has been closed
@@ -69,8 +67,13 @@ func handlePipeWs(pr PipeRouter, end End) CtxHandlerFunc {
 		}
 		defer conn.Close()
 
-		if err := pipe.CopyToWebsocket(endIO, conn); err != nil && !xfer.IsExpectedWSCloseError(err) {
-			log.Errorf("Error copying to pipe %s (%d) websocket: %v", id, end, err)
+		if err := pipe.CopyToWebsocket(endIO, conn); err != nil {
+			if span := opentracing.SpanFromContext(ctx); span != nil {
+				span.LogKV("error", err.Error())
+			}
+			if !xfer.IsExpectedWSCloseError(err) {
+				log.Errorf("Error copying to pipe %s (%d) websocket: %v", id, end, err)
+			}
 		}
 	}
 }
