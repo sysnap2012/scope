@@ -261,7 +261,7 @@ func (pr *consulPipeRouter) privateAPI() {
 			}
 		})
 
-	handler := middleware.Tracer{}.Wrap(router)
+	handler := middleware.Tracer{RouteMatcher: router}.Wrap(router)
 	log.Infof("Serving private API on endpoint %s.", pr.advertise)
 	log.Infof("Private API terminated: %v", http.ListenAndServe(pr.advertise, handler))
 }
